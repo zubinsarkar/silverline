@@ -201,6 +201,14 @@ try {
 // silently switch to Limited Login instead (see MainViewController.swift's
 // ATT comment and server/routes/auth.js's verifyFacebookAuthenticationToken).
 const nonce = window.crypto?.randomUUID?.() || `${Date.now()}-${Math.random().toString(36).slice(2)}`;
+// Clear any token the SDK is still holding from a previous sign-in first.
+// Without this, signIn() can hand back that cached token — which carries
+// the nonce from whenever it was issued, not the one generated just above
+// — and the backend rejects it as a nonce mismatch (see
+// verifyFacebookAuthenticationToken in server/routes/auth.js). The symptom
+// is a first sign-in that works and every one after it failing until the
+// app is reinstalled. Ignore failures: there may be nothing to sign out of.
+await FacebookSignIn.signOut().catch(() => {});
 const result = await FacebookSignIn.signIn({ nonce });
 if (!result.accessToken?.token && !result.authenticationToken) {
 showAppError('Facebook sign-in was cancelled');
